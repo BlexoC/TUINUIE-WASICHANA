@@ -143,3 +143,39 @@ def test_inventory_crud_and_pagination() -> None:
 
     with app.app_context():
         db.drop_all()
+
+
+def test_inventory_distribution_deducts_stock_and_lists_history() -> None:
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:"})
+    client = app.test_client()
+    with app.app_context():
+        db.create_all()
+
+    beneficiary = client.post("/api/beneficiaries", json=beneficiary_payload()).json
+    item = client.post("/api/inventory", json={"name": "Sanitary pads", "quantity": 48}).json
+    create_response = client.post(
+        "/api/inventory/distribute",
+        json={"inventory_item_id": item["id"], "beneficiary_id": beneficiary["id"], "quantity": 12},
+    )
+    assert create_response.status_code == 201
+    assert create_response.json["beneficiary_name"] == "Wanjiku Kamau"
+    assert create_response.json["quantity"] == 12
+
+    inventory_response = client.get("/api/inventory")
+    assert inventory_response.json["inventory"][0]["quantity"] == 36
+
+    list_response = client.get("/api/inventory/distributions?page=1&per_page=1")
+    assert list_response.status_code == 200
+    assert list_response.json["pagination"] == {"page": 1, "per_page": 1, "total": 1, "pages": 1}
+    assert list_response.json["distributions"][0]["inventory_item_id"] == item["id"]
+
+    insufficient = client.post(
+        "/api/inventory/distribute",
+        json={"inventory_id": item["id"], "beneficiary_id": beneficiary["id"], "quantity": 37},
+    )
+    assert insufficient.status_code == 409
+    assert client.delete(f"/api/inventory/{item['id']}").status_code == 409
+    assert client.delete(f"/api/beneficiaries/{beneficiary['id']}").status_code == 409
+
+    with app.app_context():
+        db.drop_all()

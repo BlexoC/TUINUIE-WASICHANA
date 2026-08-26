@@ -6,7 +6,7 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy import select
 
 from app.app import db
-from app.models import Beneficiary
+from app.models import Beneficiary, InventoryDistribution
 
 
 beneficiaries_bp = Blueprint("beneficiaries", __name__, url_prefix="/api/beneficiaries")
@@ -141,6 +141,13 @@ def delete_beneficiary(beneficiary_id: int):
     beneficiary = db.session.get(Beneficiary, beneficiary_id)
     if beneficiary is None:
         return _error("Beneficiary not found.", 404)
+    has_distributions = db.session.scalar(
+        select(InventoryDistribution.id)
+        .where(InventoryDistribution.beneficiary_id == beneficiary_id)
+        .limit(1)
+    )
+    if has_distributions is not None:
+        return _error("Beneficiary cannot be deleted after receiving a distribution.", 409)
 
     db.session.delete(beneficiary)
     db.session.commit()
