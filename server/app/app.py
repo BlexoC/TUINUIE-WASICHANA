@@ -27,9 +27,13 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     # Import after db is initialized so Alembic can discover every model.
     from app import models  # noqa: F401
+    from app.routes.beneficiaries import beneficiaries_bp
     from app.routes.charity import charity_bp
+    from app.routes.inventory import inventory_bp
 
+    app.register_blueprint(beneficiaries_bp)
     app.register_blueprint(charity_bp)
+    app.register_blueprint(inventory_bp)
 
     return app
 
