@@ -1,11 +1,34 @@
+"""Flask application and database extension instances."""
+
+import os
+
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
 
-app = Flask(__name__)
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///app.db"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+db = SQLAlchemy()
+migrate = Migrate(compare_type=True)
 
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
+
+def create_app(test_config: dict | None = None) -> Flask:
+    """Create the application with a configurable SQLAlchemy connection."""
+    app = Flask(__name__, instance_relative_config=True)
+    app.config.from_mapping(
+        SQLALCHEMY_DATABASE_URI=os.environ.get("DATABASE_URL", "sqlite:///app.db"),
+        SQLALCHEMY_TRACK_MODIFICATIONS=False,
+    )
+
+    if test_config:
+        app.config.update(test_config)
+
+    db.init_app(app)
+    migrate.init_app(app, db)
+
+    # Import after db is initialized so Alembic can discover every model.
+    from app import models  # noqa: F401
+
+    return app
+
+
+app = create_app()
