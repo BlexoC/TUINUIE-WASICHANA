@@ -111,3 +111,35 @@ def test_beneficiary_crud_and_pagination() -> None:
 
     with app.app_context():
         db.drop_all()
+
+
+def test_inventory_crud_and_pagination() -> None:
+    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:"})
+    client = app.test_client()
+    with app.app_context():
+        db.create_all()
+
+    create_response = client.post(
+        "/api/inventory",
+        json={"name": "Sanitary pads", "quantity": 48, "category": "Hygiene"},
+    )
+    assert create_response.status_code == 201
+    item = create_response.json
+    assert item["id"] == 1
+    assert item["unit"] == "items"
+
+    list_response = client.get("/api/inventory?page=1&per_page=1")
+    assert list_response.status_code == 200
+    assert list_response.json["pagination"] == {"page": 1, "per_page": 1, "total": 1, "pages": 1}
+    assert list_response.json["inventory"][0]["id"] == item["id"]
+
+    update_response = client.put("/api/inventory/1", json={"quantity": 36})
+    assert update_response.status_code == 200
+    assert update_response.json["quantity"] == 36
+
+    delete_response = client.delete("/api/inventory/1")
+    assert delete_response.status_code == 204
+    assert client.put("/api/inventory/1", json={"quantity": 0}).status_code == 404
+
+    with app.app_context():
+        db.drop_all()

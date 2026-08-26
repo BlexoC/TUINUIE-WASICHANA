@@ -92,3 +92,18 @@ class Donation(db.Model):
     notes = db.Column(db.Text)
 
     sponsor = db.relationship("Sponsor", back_populates="donations")
+
+
+class InventoryItem(db.Model):
+    __tablename__ = "inventory_items"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(160), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False, default=0)
+    unit = db.Column(db.String(30), nullable=False, default="items")
+    category = db.Column(db.String(80), nullable=False, default="general")
+    description = db.Column(db.Text)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utc_now)
+    updated_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
+    )
