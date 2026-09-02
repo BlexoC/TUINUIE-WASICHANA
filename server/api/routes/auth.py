@@ -96,7 +96,9 @@ def login():
     Authenticate with email + password.
     Returns access + refresh JWT tokens.
     """
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        data = {}
     email    = data.get("email", "").lower().strip()
     password = data.get("password", "")
 

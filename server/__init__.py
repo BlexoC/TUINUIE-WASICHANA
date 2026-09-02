@@ -3,6 +3,8 @@ server/__init__.py — Flask application factory
 Tuinuie Wasichana — Recurring Charity Donation Platform
 """
 
+import re
+
 from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -33,7 +35,15 @@ def create_app(config_name: str = "development") -> Flask:
     migrate.init_app(app, db)
     jwt.init_app(app)
 
-    allowed_origins = app.config.get("CORS_ORIGINS", ["http://localhost:3000"])
+    # In local dev, Vite (and VS Code's port-forwarding) frequently bounces
+    # to a different port (5173, 5174, 5175, ...) depending on what else is
+    # running. Rather than editing CORS_ORIGINS every time that happens,
+    # accept any http(s)://localhost:PORT or 127.0.0.1:PORT origin
+    # automatically, on top of whatever's explicitly configured (useful for
+    # a real deployed frontend origin in production).
+    configured_origins = app.config.get("CORS_ORIGINS", ["http://localhost:3000"])
+    localhost_pattern = re.compile(r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$")
+    allowed_origins = list(configured_origins) + [localhost_pattern]
     CORS(app, resources={r"/api/*": {"origins": allowed_origins}},
          supports_credentials=True)
 
@@ -79,7 +89,11 @@ def create_app(config_name: str = "development") -> Flask:
 
     @jwt.invalid_token_loader
     def invalid_token_callback(error):
-        return jsonify({"error": "Invalid token", "detail": str(error)}), 422
+        # 401 (not 422) so the frontend's existing "expired/invalid session"
+        # handling — attempt a refresh, then force logout if that fails —
+        # actually triggers, instead of the user seeing a dead-end error on
+        # every retry until they manually clear localStorage.
+        return jsonify({"error": "Invalid token", "detail": str(error)}), 401
 
     @jwt.unauthorized_loader
     def missing_token_callback(error):
