@@ -43,7 +43,15 @@ def create_app(config_name: str = "development") -> Flask:
     # a real deployed frontend origin in production).
     configured_origins = app.config.get("CORS_ORIGINS", ["http://localhost:3000"])
     localhost_pattern = re.compile(r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$")
-    allowed_origins = list(configured_origins) + [localhost_pattern]
+    # Vercel gives every deployment (production alias AND every preview
+    # build) its own unique subdomain of *.vercel.app, all sharing the
+    # project name as a prefix — e.g.:
+    #   tuinuie-wasichana-frontend-ten.vercel.app                (production)
+    #   tuinuie-wasichana-frontend-gkqc4qey1-blexocs-projects.vercel.app (preview)
+    # Matching on the project prefix means new preview URLs work
+    # automatically without editing CORS_ORIGINS on every deploy.
+    vercel_pattern = re.compile(r"^https://tuinuie-wasichana-frontend[a-z0-9-]*\.vercel\.app$")
+    allowed_origins = list(configured_origins) + [localhost_pattern, vercel_pattern]
     CORS(app, resources={r"/api/*": {"origins": allowed_origins}},
          supports_credentials=True)
 
