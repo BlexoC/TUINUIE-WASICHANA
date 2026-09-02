@@ -14,7 +14,7 @@ load_dotenv()
 
 class BaseConfig:
     # ── Core ──────────────────────────────────────────────────────────────
-    SECRET_KEY = os.environ.get("SECRET_KEY", "TwwvWhDbemu6WlgfJZlsJGAqxUiiN8WqgygG_QVji78_40jIRxwyxPyu0IXgmDJS")
+    SECRET_KEY = os.environ.get("SECRET_KEY")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_size": 10,
@@ -23,7 +23,7 @@ class BaseConfig:
     }
 
     # ── JWT ───────────────────────────────────────────────────────────────
-    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "LgXNoBaavgLiaAQgOi61aer89So6FyLe0GMimdF80S-CU7UoONt8o4BK_QqbOr7G")
+    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=2)
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
     JWT_TOKEN_LOCATION = ["headers"]
