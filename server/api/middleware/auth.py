@@ -24,7 +24,7 @@ def require_role(*roles):
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
-            user_id = get_jwt_identity()
+            user_id = int(get_jwt_identity())
             user = User.query.get(user_id)
             if not user or user.role not in roles:
                 return jsonify({"error": "Forbidden — insufficient role"}), 403
@@ -35,7 +35,7 @@ def require_role(*roles):
 
 def current_user():
     """Return the User ORM object for the current JWT identity."""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     return User.query.get(user_id)
 
 
