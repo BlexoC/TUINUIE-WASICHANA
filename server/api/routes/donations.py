@@ -36,7 +36,7 @@ def create_donation():
         charity_id              int      required
         amount                  decimal  required
         currency                str      default "USD"
-        payment_provider        str      "stripe"|"paypal"
+        payment_provider        str      "stripe"|"paypal"|"mpesa"
         provider_transaction_id str      required (from payment gateway)
         project_id              int      optional
         is_anonymous            bool     optional (overrides donor's default)
@@ -55,8 +55,8 @@ def create_donation():
     if not charity or charity.status != "active":
         return jsonify({"error": "Charity not found or inactive"}), 404
 
-    if data["payment_provider"] not in ("stripe", "paypal"):
-        return jsonify({"error": "payment_provider must be 'stripe' or 'paypal'"}), 422
+    if data["payment_provider"] not in ("stripe", "paypal", "mpesa"):
+        return jsonify({"error": "payment_provider must be 'stripe', 'paypal', or 'mpesa'"}), 422
 
     try:
         amount = float(data["amount"])
