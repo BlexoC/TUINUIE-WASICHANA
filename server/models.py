@@ -556,6 +556,62 @@ class DonationReminder(db.Model):
     def __repr__(self):
         return f"<DonationReminder donor_id={self.donor_id} day={self.day_of_month}>"
 
+"""
+
+Tracks every STK Push request from initiation through to the async callback.
+
+Why this table exists: Daraja's callback payload does NOT echo back the
+AccountReference, charity_id, donor_id, or anything else custom you sent in
+the original stkpush request — it only returns Amount, MpesaReceiptNumber,
+PhoneNumber, and TransactionDate. So the callback handler has no reliable
+way to know which donor/charity a payment was for unless we recorded that
+ourselves at the moment we initiated the push. CheckoutRequestID is the one
+value Daraja guarantees to echo back, so it's the join key.
+
+Adjust the ForeignKey table names below ("donors.id", "charities.id",
+"projects.id", "donations.id") if your actual __tablename__ values differ —
+these are guesses based on your route file's imports (Donor, Charity,
+Project, Donation). Add this import to wherever your other models are
+aggregated (e.g. server/models/__init__.py) so Flask-Migrate/SQLAlchemy
+picks it up.
+"""
+
+
+
+class MpesaCheckoutRequest(db.Model):
+    __tablename__ = "mpesa_checkout_requests"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # The one value Daraja reliably echoes back in the callback — our join key.
+    checkout_request_id = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    merchant_request_id = db.Column(db.String(64), nullable=True)
+
+    donor_id = db.Column(db.Integer, db.ForeignKey("donors.id"), nullable=False)
+    charity_id = db.Column(db.Integer, db.ForeignKey("charities.id"), nullable=False)
+    project_id = db.Column(db.Integer, db.ForeignKey("projects.id"), nullable=True)
+
+    phone_number = db.Column(db.String(15), nullable=False)
+    amount = db.Column(db.Integer, nullable=False)
+
+    # pending -> completed | failed, set by the callback (or by a fallback
+    # query if the callback is delayed/missed)
+    status = db.Column(db.String(20), nullable=False, default="pending")
+    mpesa_receipt_number = db.Column(db.String(30), nullable=True)
+    result_code = db.Column(db.Integer, nullable=True)
+    result_desc = db.Column(db.String(255), nullable=True)
+
+    # Set once we've created the actual Donation row, so we never double-record
+    # the same receipt if Daraja retries the callback.
+    donation_id = db.Column(db.Integer, db.ForeignKey("donations.id"), nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    donor = db.relationship("Donor")
+    charity = db.relationship("Charity")
+    donation = db.relationship("Donation")
+
 
 # ------------------------------------------------------------
 # IN-APP NOTIFICATIONS
