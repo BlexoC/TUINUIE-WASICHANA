@@ -10,7 +10,7 @@ and relationships. Import `db` from your Flask app factory as usual.
 Requires: Flask-SQLAlchemy, psycopg2-binary
 """
 
-from datetime import date, time, datetime, timezone
+from datetime import date, datetime, time
 from sqlalchemy import (
     CheckConstraint, UniqueConstraint, Index, func
 )
@@ -52,7 +52,7 @@ payment_status_enum = PG_ENUM(
     name="payment_status", create_type=False
 )
 payment_provider_enum = PG_ENUM(
-    "stripe", "paypal",
+    "stripe", "paypal", "mpesa",
     name="payment_provider", create_type=False
 )
 project_status_enum = PG_ENUM(
@@ -587,9 +587,13 @@ class MpesaCheckoutRequest(db.Model):
     checkout_request_id = db.Column(db.String(64), unique=True, nullable=False, index=True)
     merchant_request_id = db.Column(db.String(64), nullable=True)
 
-    donor_id = db.Column(db.Integer, db.ForeignKey("donors.id"), nullable=False)
-    charity_id = db.Column(db.Integer, db.ForeignKey("charities.id"), nullable=False)
-    project_id = db.Column(db.Integer, db.ForeignKey("projects.id"), nullable=True)
+    donor_id = db.Column(db.BigInteger, db.ForeignKey("donors.id"), nullable=False)
+    charity_id = db.Column(db.BigInteger, db.ForeignKey("charities.id"), nullable=False)
+    project_id = db.Column(
+        db.BigInteger,
+        db.ForeignKey("charity_projects.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     phone_number = db.Column(db.String(15), nullable=False)
     amount = db.Column(db.Integer, nullable=False)
@@ -603,10 +607,14 @@ class MpesaCheckoutRequest(db.Model):
 
     # Set once we've created the actual Donation row, so we never double-record
     # the same receipt if Daraja retries the callback.
-    donation_id = db.Column(db.Integer, db.ForeignKey("donations.id"), nullable=True)
+    donation_id = db.Column(
+        db.BigInteger,
+        db.ForeignKey("donations.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     donor = db.relationship("Donor")
     charity = db.relationship("Charity")
