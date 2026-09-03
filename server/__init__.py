@@ -35,21 +35,8 @@ def create_app(config_name: str = "development") -> Flask:
     migrate.init_app(app, db)
     jwt.init_app(app)
 
-    # In local dev, Vite (and VS Code's port-forwarding) frequently bounces
-    # to a different port (5173, 5174, 5175, ...) depending on what else is
-    # running. Rather than editing CORS_ORIGINS every time that happens,
-    # accept any http(s)://localhost:PORT or 127.0.0.1:PORT origin
-    # automatically, on top of whatever's explicitly configured (useful for
-    # a real deployed frontend origin in production).
     configured_origins = app.config.get("CORS_ORIGINS", ["http://localhost:3000"])
     localhost_pattern = re.compile(r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$")
-    # Vercel gives every deployment (production alias AND every preview
-    # build) its own unique subdomain of *.vercel.app, all sharing the
-    # project name as a prefix — e.g.:
-    #   tuinuie-wasichana-frontend-ten.vercel.app                (production)
-    #   tuinuie-wasichana-frontend-gkqc4qey1-blexocs-projects.vercel.app (preview)
-    # Matching on the project prefix means new preview URLs work
-    # automatically without editing CORS_ORIGINS on every deploy.
     vercel_pattern = re.compile(r"^https://tuinuie-wasichana-frontend[a-z0-9-]*\.vercel\.app$")
     allowed_origins = list(configured_origins) + [localhost_pattern, vercel_pattern]
     CORS(app, resources={r"/api/*": {"origins": allowed_origins}},
@@ -68,6 +55,7 @@ def create_app(config_name: str = "development") -> Flask:
     from server.api.routes.notifications import notifications_bp
     from server.api.routes.admin import admin_bp
     from server.api.routes.payment_methods import payment_methods_bp
+    from server.api.routes.mpesa import mpesa_bp                        # ← NEW
 
     app.register_blueprint(auth_bp,              url_prefix="/api/auth")
     app.register_blueprint(users_bp,             url_prefix="/api/users")
@@ -81,11 +69,12 @@ def create_app(config_name: str = "development") -> Flask:
     app.register_blueprint(notifications_bp,     url_prefix="/api/notifications")
     app.register_blueprint(admin_bp,             url_prefix="/api/admin")
     app.register_blueprint(payment_methods_bp,   url_prefix="/api/payment-methods")
+    app.register_blueprint(mpesa_bp,             url_prefix="/api/mpesa")  # ← NEW
 
     # ── JWT token revocation callback (stub — add Redis blocklist here) ───
     @jwt.token_in_blocklist_loader
     def check_if_token_revoked(jwt_header, jwt_payload):
-        return False  # swap with Redis/DB check in production
+        return False
 
     @jwt.revoked_token_loader
     def revoked_token_callback(jwt_header, jwt_payload):
@@ -97,10 +86,6 @@ def create_app(config_name: str = "development") -> Flask:
 
     @jwt.invalid_token_loader
     def invalid_token_callback(error):
-        # 401 (not 422) so the frontend's existing "expired/invalid session"
-        # handling — attempt a refresh, then force logout if that fails —
-        # actually triggers, instead of the user seeing a dead-end error on
-        # every retry until they manually clear localStorage.
         return jsonify({"error": "Invalid token", "detail": str(error)}), 401
 
     @jwt.unauthorized_loader
