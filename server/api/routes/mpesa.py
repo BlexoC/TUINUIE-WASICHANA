@@ -20,7 +20,7 @@ from flask_jwt_extended import jwt_required
 
 from server import db
 from server.models import Charity, Donation, Notification
-from server.models.mpesa_checkout import MpesaCheckoutRequest
+from server.models import Charity, Donation, Notification, MpesaCheckoutRequest
 from server.api.middleware.auth import current_user
 from server.services import mpesa as mpesa_service
 

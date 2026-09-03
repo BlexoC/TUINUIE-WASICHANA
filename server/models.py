@@ -10,7 +10,7 @@ and relationships. Import `db` from your Flask app factory as usual.
 Requires: Flask-SQLAlchemy, psycopg2-binary
 """
 
-from datetime import date, time
+from datetime import date, time, datetime, timezone
 from sqlalchemy import (
     CheckConstraint, UniqueConstraint, Index, func
 )
@@ -605,8 +605,8 @@ class MpesaCheckoutRequest(db.Model):
     # the same receipt if Daraja retries the callback.
     donation_id = db.Column(db.Integer, db.ForeignKey("donations.id"), nullable=True)
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     donor = db.relationship("Donor")
     charity = db.relationship("Charity")
